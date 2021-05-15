@@ -11,7 +11,8 @@
 /*!
  * @brief マルチバイト文字列(CP932)をワイド文字列へ変換するクラス
  */
-class to_wchar {
+class [[deprecated("please use to_utf16 function")]] to_wchar
+{
 public:
     to_wchar(const char *src)
         : buf(NULL)
@@ -61,7 +62,8 @@ protected:
 /*!
  * @brief ワイド文字列をマルチバイト文字列(CP932)へ変換するクラス
  */
-class to_multibyte {
+class [[deprecated("please use to_system function")]] to_multibyte
+{
 public:
     to_multibyte(const WCHAR *src)
         : buf(NULL)

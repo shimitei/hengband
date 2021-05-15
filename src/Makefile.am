@@ -359,6 +359,7 @@ hengband_SOURCES = \
 	load/store-loader.cpp load/store-loader.h \
 	load/world-loader.cpp load/world-loader.h \
 	\
+	locale/encoding.cpp locale/encoding.h \
 	locale/english.cpp locale/english.h \
 	locale/japanese.cpp locale/japanese.h \
 	locale/utf-8.cpp locale/utf-8.h \
