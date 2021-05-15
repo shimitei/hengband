@@ -3,6 +3,7 @@
  * @brief Windows版固有実装(効果音)
  */
 
+#include "locale/encoding.h"
 #include "main-win/main-win-sound.h"
 #include "main-win/main-win-cfg-reader.h"
 #include "main-win/main-win-define.h"
@@ -64,10 +65,10 @@ errr play_sound(int val)
         return 1;
     }
 
-    char buf[MAIN_WIN_MAX_PATH];
-    path_build(buf, MAIN_WIN_MAX_PATH, ANGBAND_DIR_XTRA_SOUND, filename);
+    system_string path;
+    path_build(path.raw_ptr(), path.get_size(), ANGBAND_DIR_XTRA_SOUND, filename);
 
-    if (::PlaySoundA(buf, 0, SND_FILENAME | SND_ASYNC)) {
+    if (::PlaySoundW(to_utf16(path).c_ptr(), 0, SND_FILENAME | SND_ASYNC)) {
         return 0;
     }
     return -1;

@@ -19,10 +19,10 @@
 #include "world/world.h"
 
 bool use_pause_music_inactive = false;
-static int current_music_type = TERM_XTRA_MUSIC_MUTE;
-static int current_music_id = 0;
+int current_music_type = TERM_XTRA_MUSIC_MUTE;
+int current_music_id = 0;
 // current filename being played
-static char current_music_path[MAIN_WIN_MAX_PATH];
+system_string current_music_path;
 
 /*
  * Directory name
@@ -142,7 +142,9 @@ void load_music_prefs()
 {
     CfgReader reader(ANGBAND_DIR_XTRA_MUSIC, { "music_debug.cfg", "music.cfg" });
 
-    GetPrivateProfileStringA("Device", "type", "MPEGVideo", mci_device_type, _countof(mci_device_type), reader.get_cfg_path());
+    system_string device_type(mci_device_type.get_size());
+    GetPrivateProfileStringA("Device", "type", "MPEGVideo", device_type.raw_ptr(), device_type.get_size(), reader.get_cfg_path());
+    mci_device_type = to_utf16(device_type);
 
     // clang-format off
     music_cfg_data = reader.read_sections({
@@ -170,11 +172,11 @@ void load_music_prefs()
  */
 errr stop_music(void)
 {
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_STOP, MCI_WAIT, 0);
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_CLOSE, MCI_WAIT, 0);
+    mciSendCommandW(mci_open_parms.wDeviceID, MCI_STOP, MCI_WAIT, 0);
+    mciSendCommandW(mci_open_parms.wDeviceID, MCI_CLOSE, MCI_WAIT, 0);
     current_music_type = TERM_XTRA_MUSIC_MUTE;
     current_music_id = 0;
-    strcpy(current_music_path, "\0");
+    current_music_path = system_string::empty();
     return 0;
 }
 
@@ -193,22 +195,25 @@ errr play_music(int type, int val)
     if (!filename)
         return 1; // no setting
 
-    char buf[MAIN_WIN_MAX_PATH];
-    path_build(buf, MAIN_WIN_MAX_PATH, ANGBAND_DIR_XTRA_MUSIC, filename);
+    system_string path;
+    path_build(path.raw_ptr(), path.get_size(), ANGBAND_DIR_XTRA_MUSIC, filename);
 
     if (current_music_type != TERM_XTRA_MUSIC_MUTE)
-        if (0 == strcmp(current_music_path, buf))
+        if (0 == strcmp(current_music_path.c_ptr(), path.c_ptr()))
             return 0; // now playing same file
 
     current_music_type = type;
     current_music_id = val;
-    strcpy(current_music_path, buf);
+    current_music_path = path;
 
-    mci_open_parms.lpstrDeviceType = mci_device_type;
-    mci_open_parms.lpstrElementName = buf;
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_STOP, MCI_WAIT, 0);
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_CLOSE, MCI_WAIT, 0);
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT | MCI_NOTIFY, (DWORD)&mci_open_parms);
+    utf16_string tmp = to_utf16(path);
+    mci_open_parms.lpstrDeviceType = mci_device_type.c_ptr();
+    mci_open_parms.lpstrElementName = tmp.c_ptr();
+    MCIERROR e;
+    MCIERR_BAD_TIME_FORMAT;
+    e = mciSendCommandW(mci_open_parms.wDeviceID, MCI_STOP, MCI_WAIT, 0);
+    e = mciSendCommandW(mci_open_parms.wDeviceID, MCI_CLOSE, MCI_WAIT, 0);
+    e = mciSendCommandW(mci_open_parms.wDeviceID, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT | MCI_NOTIFY, (DWORD)&mci_open_parms);
     // Send MCI_PLAY in the notification event once MCI_OPEN is completed
     return 0;
 }
@@ -218,7 +223,7 @@ errr play_music(int type, int val)
  */
 void pause_music(void)
 {
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_PAUSE, MCI_WAIT, 0);
+    mciSendCommandW(mci_open_parms.wDeviceID, MCI_PAUSE, MCI_WAIT, 0);
 }
 
 /*
@@ -226,7 +231,7 @@ void pause_music(void)
  */
 void resume_music(void)
 {
-    mciSendCommandA(mci_open_parms.wDeviceID, MCI_RESUME, MCI_WAIT, 0);
+    mciSendCommandW(mci_open_parms.wDeviceID, MCI_RESUME, MCI_WAIT, 0);
 }
 
 /*
@@ -253,8 +258,8 @@ void on_mci_notify(WPARAM wFlags, LONG lDevID)
 {
     if (wFlags == MCI_NOTIFY_SUCCESSFUL) {
         // play a music (repeat)
-        mciSendCommandA(lDevID, MCI_SEEK, MCI_SEEK_TO_START | MCI_WAIT, 0);
-        mciSendCommandA(lDevID, MCI_PLAY, MCI_NOTIFY, (DWORD)&mci_play_parms);
+        mciSendCommandW(lDevID, MCI_SEEK, MCI_SEEK_TO_START | MCI_WAIT, 0);
+        mciSendCommandW(lDevID, MCI_PLAY, MCI_NOTIFY, (DWORD)&mci_play_parms);
     }
 }
 
